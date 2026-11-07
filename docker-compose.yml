@@ -1,7 +1,10 @@
 name: radar-concurso
 
 x-backend: &backend
-  build: ./backend
+  build:
+    context: ./backend
+    args:
+      EXTRAS: dev           # pytest e ruff disponíveis no container de desenvolvimento
   env_file:
     - path: .env
       required: false
