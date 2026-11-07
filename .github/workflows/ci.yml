@@ -48,7 +48,6 @@ jobs:
           --health-retries 10
     env:
       DATABASE_URL: postgresql+psycopg://radar:radar@localhost:5432/radar
-      RADAR_SCHEMA: ${{ github.workspace }}/db/schema.sql
       RADAR_REQUIRE_DB: "1"
     steps:
       - uses: actions/checkout@v4

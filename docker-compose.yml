@@ -9,10 +9,13 @@ x-backend: &backend
     DATABASE_URL: postgresql+psycopg://radar:radar@db:5432/radar
   volumes:
     - ./backend:/app        # código ao vivo em desenvolvimento
-    - ./db:/db:ro           # schema usado pelos testes de integração
+
+x-depois-das-migrations: &depois-das-migrations
   depends_on:
     db:
       condition: service_healthy
+    migrate:
+      condition: service_completed_successfully
 
 services:
   db:
@@ -25,24 +28,32 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U radar -d radar"]
       interval: 5s
       retries: 10
 
-  worker:
+  # Roda uma vez a cada `up` e termina; os demais serviços só sobem depois dele.
+  migrate:
     <<: *backend
+    command: alembic upgrade head
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  worker:
+    <<: [*backend, *depois-das-migrations]
     command: python -m radar.worker loop
     restart: unless-stopped
 
   bot:
-    <<: *backend
+    <<: [*backend, *depois-das-migrations]
     command: python -m radar.bot.main
     restart: on-failure
 
   api:
-    <<: *backend
+    <<: [*backend, *depois-das-migrations]
     command: uvicorn radar.api.main:app --host 0.0.0.0 --port 8000 --reload
     ports:
       - "8000:8000"
