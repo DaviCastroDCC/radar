@@ -19,6 +19,7 @@ from radar.config import get_settings
 from radar.notify.telegram import Telegram, enviar_pendentes
 from radar.pipeline.extractor import Extrator
 from radar.pipeline.processor import coletar_fonte, processar_pendentes
+from radar.usuarios import purgar_inativos
 
 log = logging.getLogger("radar.worker")
 FUSO = ZoneInfo("America/Sao_Paulo")
@@ -55,7 +56,14 @@ def ciclo() -> None:
     coletar()
     processar()
     notificar()
+    aplicar_retencao()
     log.info("ciclo concluído em %.1fs", time.monotonic() - inicio)
+
+
+def aplicar_retencao() -> None:
+    apagados = purgar_inativos()
+    if apagados:
+        log.info("retenção LGPD: %s usuários inativos apagados", apagados)
 
 
 def loop() -> None:

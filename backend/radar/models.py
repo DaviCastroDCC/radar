@@ -94,11 +94,13 @@ class Usuario(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     telegram_chat_id: Mapped[int | None] = mapped_column(BigInteger)
-    nome: Mapped[str | None]
     email: Mapped[str | None]
     plano: Mapped[str] = mapped_column(server_default="free")
     ativo: Mapped[bool] = mapped_column(server_default="true")
     criado_em: Mapped[datetime] = _agora()
+    termos_aceitos_em: Mapped[datetime | None]
+    termos_versao: Mapped[str | None]
+    desativado_em: Mapped[datetime | None]
 
     filtros: Mapped[list["Filtro"]] = relationship(back_populates="usuario", passive_deletes=True)
 

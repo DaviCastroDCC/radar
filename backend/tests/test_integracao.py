@@ -107,7 +107,9 @@ def test_usuario_que_bloqueou_o_bot_e_desativado(limpo):
     )
     assert enviar_pendentes(tg, max_tentativas=3) == 0
     with db.session_scope() as s:
-        assert s.get(Usuario, uid).ativo is False
+        usuario = s.get(Usuario, uid)
+        assert usuario.ativo is False
+        assert usuario.desativado_em is not None  # inicia o prazo de retenção
         assert s.scalar(select(Alerta.status)) == "erro"
 
 

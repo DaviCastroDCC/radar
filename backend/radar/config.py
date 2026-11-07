@@ -25,6 +25,10 @@ class Settings(BaseSettings):
     max_tentativas: int = 3
 
     max_filtros_free: int = 3
+
+    # LGPD: onde a política completa está publicada e como falar com o controlador.
+    url_politica_privacidade: str = "https://github.com/DaviCastroDCC/radar/blob/main/docs/PRIVACIDADE.md"
+    contato_privacidade: str | None = None
     http_user_agent: str = "RadarConcursoBot/0.1"
 
     @property

@@ -8,6 +8,8 @@ from radar.collectors.base import PublicacaoColetada
 from radar.models import Filtro, Usuario
 from radar.pipeline.extractor import EditalExtraido
 from radar.pipeline.processor import salvar_publicacao
+from radar.relogio import agora
+from radar.usuarios import TERMOS_VERSAO
 
 CARGO_PROFESSOR = {
     "nome": "Professor",
@@ -83,9 +85,14 @@ def publicar(id_externo: str, titulo: str, texto: str) -> None:
     )
 
 
-def criar_usuario(chat_id: int, **filtro) -> int:
+def criar_usuario(chat_id: int, *, aceitou_termos: bool = True, **filtro) -> int:
+    """Usuário com um filtro; por padrão já com consentimento na versão vigente."""
     with db.session_scope() as s:
-        usuario = Usuario(telegram_chat_id=chat_id, nome=f"user{chat_id}")
+        usuario = Usuario(
+            telegram_chat_id=chat_id,
+            termos_aceitos_em=agora() if aceitou_termos else None,
+            termos_versao=TERMOS_VERSAO if aceitou_termos else None,
+        )
         s.add(usuario)
         s.flush()
         s.add(Filtro(usuario_id=usuario.id, **filtro))

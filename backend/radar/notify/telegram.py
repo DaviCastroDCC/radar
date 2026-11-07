@@ -12,7 +12,9 @@ from radar.db import session_scope
 from radar.models import Alerta, Edital, Filtro
 from radar.notify.mensagens import mensagem_alerta
 from radar.pipeline.matcher import casar
-from radar.pipeline.processor import agora, edital_para_info, filtro_para_info
+from radar.pipeline.processor import edital_para_info, filtro_para_info
+from radar.relogio import agora
+from radar.usuarios import desativar
 
 log = logging.getLogger(__name__)
 
@@ -86,7 +88,7 @@ def enviar_pendentes(telegram: Telegram, max_tentativas: int, limite: int = 1000
             try:
                 telegram.enviar(alerta.usuario.telegram_chat_id, texto, botoes)
             except UsuarioBloqueouBot:
-                alerta.usuario.ativo = False
+                desativar(alerta.usuario)
                 alerta.status, alerta.erro = "erro", "usuário bloqueou o bot"
                 continue
             except (ErroEnvio, httpx.HTTPError) as e:
