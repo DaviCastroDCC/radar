@@ -11,3 +11,6 @@ dist/
 .ruff_cache/
 .coverage
 htmlcov/
+
+# Backups do banco: contêm dados pessoais, nunca versionar
+backups/
