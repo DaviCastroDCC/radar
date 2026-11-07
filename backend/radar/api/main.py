@@ -105,7 +105,7 @@ def listar_editais(
             select(Edital)
             .join(Publicacao)
             .options(selectinload(Edital.publicacao))
-            .where(Edital.tipo == tipo)
+            .where(Edital.tipo == tipo, Edital.duplicata_de_id.is_(None))
         )
         if q:
             consulta = consulta.where(text("editais.tsv @@ websearch_to_tsquery('pt', :q)").bindparams(q=q))

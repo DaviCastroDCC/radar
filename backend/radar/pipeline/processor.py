@@ -2,22 +2,22 @@
 
 import hashlib
 import logging
-import re
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
+from radar.collectors import FONTES_DIARIOS
 from radar.collectors.base import Coletor, ErroColeta, PublicacaoColetada
 from radar.db import session_scope
 from radar.models import Acompanhamento, Alerta, Cargo, Coleta, Edital, Filtro, Publicacao, Usuario
+from radar.pipeline.dedup import mesmo_concurso, numero_e_ano
 from radar.pipeline.detector import detectar
 from radar.pipeline.extractor import EditalExtraido, ErroExtracao, Extrator, parse_data
 from radar.pipeline.matcher import CargoInfo, EditalInfo, FiltroInfo, casar
 from radar.relogio import agora
-from radar.texto import normalizar
 from radar.usuarios import pode_receber_alertas
 
 log = logging.getLogger(__name__)
@@ -35,13 +35,21 @@ TIPOS_LIGADOS_A_OUTRO_EDITAL = {
 # ---------------------------------------------------------------------------
 # Coleta
 # ---------------------------------------------------------------------------
+def coletada_recentemente(fonte: str, minutos: int) -> bool:
+    with session_scope() as s:
+        ultima = s.scalar(select(func.max(Coleta.iniciada_em)).where(Coleta.fonte == fonte))
+    return ultima is not None and agora() - ultima < timedelta(minutes=minutos)
+
+
 def coletar_fonte(coletor: Coletor, dia: date) -> tuple[int, int]:
     """Roda um coletor para um dia e grava as publicações novas. Devolve (lidos, novos)."""
     with session_scope() as s:
         conhecidos = set(
             s.scalars(
                 select(Publicacao.id_externo).where(
-                    Publicacao.fonte == coletor.fonte, Publicacao.data_publicacao >= dia
+                    Publicacao.fonte == coletor.fonte,
+                    # Bancas olham uma janela de dias para trás; diários, só o próprio dia.
+                    Publicacao.data_publicacao >= dia - timedelta(days=getattr(coletor, "janela_dias", 0)),
                 )
             )
         )
@@ -130,7 +138,9 @@ def processar_pendentes(extrator: Extrator, max_tentativas: int, limite: int = 2
 def processar_publicacao(s: Session, pub: Publicacao, extrator: Extrator, max_tentativas: int) -> None:
     deteccao = detectar(pub.titulo or "", pub.texto)
     pub.score_detector = deteccao.score
-    if not deteccao.candidato:
+    # O detector filtra DIÁRIOS, onde quase nada é concurso. Em bancas tudo é concurso e
+    # uma retificação curta nem repete "concurso público": a fonte já é o sinal, a IA decide.
+    if not deteccao.candidato and pub.fonte in FONTES_DIARIOS:
         _finalizar(pub, "descartada")
         return
 
@@ -200,7 +210,10 @@ def salvar_edital(s: Session, pub: Publicacao, ex: EditalExtraido, modelo: str) 
         ],
     )
     if ex.tipo in TIPOS_LIGADOS_A_OUTRO_EDITAL:
-        edital.edital_pai_id = encontrar_edital_pai(s, edital)
+        edital.edital_pai_id = _abertura_correspondente(s, edital.orgao, edital.edital_referenciado)
+    elif ex.tipo == "abertura":
+        # Mesmo edital de abertura já visto por outra fonte (ex.: banca e DOU)?
+        edital.duplicata_de_id = _abertura_correspondente(s, edital.orgao, edital.numero_edital)
     s.add(edital)
     s.flush()
     return edital
@@ -210,33 +223,25 @@ def _decimal(valor: float | None) -> Decimal | None:
     return Decimal(str(round(valor, 2))) if valor is not None else None
 
 
-def chave_numero_edital(numero: str | None) -> str | None:
-    """'EDITAL Nº 01/2026 - SEEDF' -> '1/2026'"""
-    if not numero:
-        return None
-    m = re.search(r"(\d+)\s*/\s*(\d{4})", numero)
-    if m:
-        return f"{int(m.group(1))}/{m.group(2)}"
-    m = re.search(r"n[ºo°.]*\s*(\d+)", normalizar(numero))
-    return str(int(m.group(1))) if m else None
+JANELA_DEDUP = timedelta(days=180)
 
 
-def encontrar_edital_pai(s: Session, edital: Edital) -> int | None:
-    chave = chave_numero_edital(edital.edital_referenciado)
-    if not chave or not edital.orgao:
+def _abertura_correspondente(s: Session, orgao: str | None, numero: str | None) -> int | None:
+    """Edital de abertura ORIGINAL (não duplicata) com mesmo órgão e número, nos últimos meses."""
+    if not orgao or not numero_e_ano(numero):
         return None
-    orgao = normalizar(edital.orgao)
     candidatos = s.execute(
         select(Edital.id, Edital.orgao, Edital.numero_edital)
-        .where(Edital.tipo == "abertura", Edital.numero_edital.is_not(None))
-        .order_by(Edital.id.desc())
-        .limit(500)
+        .where(
+            Edital.tipo == "abertura",
+            Edital.numero_edital.is_not(None),
+            Edital.duplicata_de_id.is_(None),
+            Edital.criado_em > agora() - JANELA_DEDUP,
+        )
+        .order_by(Edital.id)
     )
     for id_, orgao_cand, numero_cand in candidatos:
-        if chave_numero_edital(numero_cand) != chave:
-            continue
-        o = normalizar(orgao_cand or "")
-        if o and (o in orgao or orgao in o):
+        if mesmo_concurso(orgao, numero, orgao_cand, numero_cand):
             return id_
     return None
 
@@ -262,6 +267,8 @@ def gerar_alertas(s: Session, edital: Edital) -> int:
     hoje = date.today()
     usuarios: set[int] = set()
 
+    if edital.duplicata_de_id:
+        return 0  # quem se interessa já foi avisado pela primeira fonte que publicou
     if edital.tipo == "abertura":
         if edital.inscricao_fim and edital.inscricao_fim < hoje:
             return 0  # inscrições já encerradas (ex.: reprocessamento de dias antigos)

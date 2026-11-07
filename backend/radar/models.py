@@ -51,6 +51,8 @@ class Edital(Base):
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     publicacao_id: Mapped[int] = _fk("publicacoes.id")
     edital_pai_id: Mapped[int | None] = _fk("editais.id")
+    # Mesmo concurso já recebido de outra fonte: não gera alerta nem aparece na API.
+    duplicata_de_id: Mapped[int | None] = _fk("editais.id")
     tipo: Mapped[str]
     orgao: Mapped[str | None]
     banca: Mapped[str | None]
