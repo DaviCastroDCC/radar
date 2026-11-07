@@ -71,10 +71,10 @@ class ExtratorFalso:
         return self.respostas[titulo]
 
 
-def publicar(id_externo: str, titulo: str, texto: str) -> None:
+def publicar(id_externo: str, titulo: str, texto: str, fonte: str = "dodf") -> None:
     salvar_publicacao(
         PublicacaoColetada(
-            fonte="dodf",
+            fonte=fonte,
             id_externo=id_externo,
             data_publicacao=date.today(),
             texto=texto,
@@ -97,3 +97,33 @@ def criar_usuario(chat_id: int, *, aceitou_termos: bool = True, **filtro) -> int
         s.flush()
         s.add(Filtro(usuario_id=usuario.id, **filtro))
         return usuario.id
+
+
+def pdf_com_texto(*paginas: str) -> bytes:
+    """PDF mínimo e válido, uma página por argumento (texto ASCII simples, fonte Helvetica)."""
+    objetos: list[bytes] = []
+    n_paginas = len(paginas)
+    # 1: catálogo, 2: árvore de páginas, 3: fonte; depois, por página: página + conteúdo
+    kids = " ".join(f"{4 + 2 * i} 0 R" for i in range(n_paginas))
+    objetos.append(b"<< /Type /Catalog /Pages 2 0 R >>")
+    objetos.append(f"<< /Type /Pages /Kids [{kids}] /Count {n_paginas} >>".encode())
+    objetos.append(b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>")
+    for i, texto in enumerate(paginas):
+        linhas = texto.replace("(", "[").replace(")", "]").splitlines() or [""]
+        comandos = "BT /F1 10 Tf 40 800 Td 12 TL " + " ".join(f"({linha}) '" for linha in linhas) + " ET"
+        objetos.append(
+            f"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> "
+            f"/Contents {5 + 2 * i} 0 R >>".encode()
+        )
+        objetos.append(f"<< /Length {len(comandos)} >>\nstream\n{comandos}\nendstream".encode())
+
+    saida = bytearray(b"%PDF-1.4\n")
+    offsets = []
+    for numero, corpo in enumerate(objetos, start=1):
+        offsets.append(len(saida))
+        saida += f"{numero} 0 obj\n".encode() + corpo + b"\nendobj\n"
+    xref = len(saida)
+    saida += f"xref\n0 {len(objetos) + 1}\n0000000000 65535 f \n".encode()
+    saida += b"".join(f"{o:010d} 00000 n \n".encode() for o in offsets)
+    saida += f"trailer\n<< /Size {len(objetos) + 1} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n".encode()
+    return bytes(saida)

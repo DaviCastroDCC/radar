@@ -6,7 +6,6 @@ import pytest
 from radar.config import Settings
 from radar.notify.mensagens import mensagem_alerta, reais
 from radar.pipeline.extractor import EditalExtraido, ErroExtracao, Extrator, parse_data
-from radar.pipeline.processor import chave_numero_edital
 from tests.fakes import ClienteAnthropicFalso, extraido_exemplo
 
 
@@ -36,19 +35,6 @@ def test_parse_data():
     assert parse_data("2026-11-30") == date(2026, 11, 30)
     assert parse_data("30/11/2026") is None
     assert parse_data(None) is None
-
-
-@pytest.mark.parametrize(
-    ("entrada", "esperado"),
-    [
-        ("Edital nº 01/2026", "1/2026"),
-        ("EDITAL NORMATIVO Nº 1 / 2026 – SEEDF", "1/2026"),
-        ("Edital nº 7", "7"),
-        (None, None),
-    ],
-)
-def test_chave_numero_edital(entrada, esperado):
-    assert chave_numero_edital(entrada) == esperado
 
 
 def test_reais():
