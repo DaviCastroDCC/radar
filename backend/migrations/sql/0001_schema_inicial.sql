@@ -1,5 +1,6 @@
 -- RadarConcurso - schema inicial (PostgreSQL 17 + pgvector)
--- Executado automaticamente pelo container do Postgres na primeira subida.
+-- Aplicado pela migration 0001_schema_inicial. Idempotente (IF NOT EXISTS) para adotar
+-- bancos criados antes do Alembic. Mudanças novas vão em migrations novas, nunca aqui.
 
 CREATE EXTENSION IF NOT EXISTS unaccent;
 CREATE EXTENSION IF NOT EXISTS pg_trgm;

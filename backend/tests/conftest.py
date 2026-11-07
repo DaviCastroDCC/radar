@@ -1,16 +1,20 @@
-"""Fixtures compartilhadas. O banco de teste (radar_test) é recriado do zero a cada execução."""
+"""Fixtures compartilhadas. O banco de teste (radar_test) é recriado do zero a cada execução
+e montado pelas migrations do Alembic, exatamente como em produção."""
 
 import os
 from pathlib import Path
 
 import pytest
-from sqlalchemy import create_engine, text
+from alembic import command
+from alembic.config import Config
+from sqlalchemy import Engine, create_engine, text
 
 from radar import db
 from radar.config import get_settings
 
-SCHEMA = Path(os.environ.get("RADAR_SCHEMA", "/db/schema.sql"))
+BACKEND = Path(__file__).resolve().parent.parent
 URL_BASE = os.environ.get("DATABASE_URL", "postgresql+psycopg://radar:radar@localhost:5432/radar")
+SERVIDOR = URL_BASE.rsplit("/", 1)[0]
 TABELAS = "alertas, acompanhamentos, filtros, usuarios, cargos, editais, publicacoes, coletas"
 
 
@@ -19,25 +23,40 @@ def _limpar_caches() -> None:
         cache.cache_clear()
 
 
-@pytest.fixture(scope="session")
-def banco_de_teste():
-    servidor = URL_BASE.rsplit("/", 1)[0]
+def criar_banco_vazio(nome: str) -> Engine:
+    """Recria o banco `nome` do zero. Pula (ou falha, no CI) se não houver Postgres."""
     # No CI (RADAR_REQUIRE_DB=1) a falta de banco é erro, não um "skip" silencioso.
     indisponivel = pytest.fail if os.environ.get("RADAR_REQUIRE_DB") == "1" else pytest.skip
-    if not SCHEMA.exists():
-        indisponivel(f"schema não encontrado em {SCHEMA}")
     try:
-        admin = create_engine(f"{servidor}/postgres", isolation_level="AUTOCOMMIT")
+        admin = create_engine(f"{SERVIDOR}/postgres", isolation_level="AUTOCOMMIT")
         with admin.connect() as c:
-            c.execute(text("DROP DATABASE IF EXISTS radar_test WITH (FORCE)"))
-            c.execute(text("CREATE DATABASE radar_test"))
+            c.execute(text(f'DROP DATABASE IF EXISTS "{nome}" WITH (FORCE)'))
+            c.execute(text(f'CREATE DATABASE "{nome}"'))
+        admin.dispose()
     except Exception as e:  # sem Postgres por perto
         indisponivel(f"Postgres indisponível: {e}")
+    return create_engine(f"{SERVIDOR}/{nome}")
 
-    with create_engine(f"{servidor}/radar_test").begin() as c:
-        c.exec_driver_sql(SCHEMA.read_text(encoding="utf-8"))
 
-    os.environ["DATABASE_URL"] = f"{servidor}/radar_test"
+def alembic_config(engine: Engine, conexao=None) -> Config:
+    cfg = Config(str(BACKEND / "alembic.ini"))
+    cfg.attributes["configure_logger"] = False
+    cfg.attributes["connection"] = conexao
+    return cfg
+
+
+def migrar(engine: Engine, alvo: str = "head") -> None:
+    with engine.begin() as conexao:
+        command.upgrade(alembic_config(engine, conexao), alvo)
+
+
+@pytest.fixture(scope="session")
+def banco_de_teste():
+    engine = criar_banco_vazio("radar_test")
+    migrar(engine)
+    engine.dispose()
+
+    os.environ["DATABASE_URL"] = f"{SERVIDOR}/radar_test"
     _limpar_caches()
     yield
     os.environ["DATABASE_URL"] = URL_BASE
