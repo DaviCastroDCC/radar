@@ -3,7 +3,7 @@
 import hashlib
 import logging
 import re
-from datetime import UTC, date, datetime
+from datetime import date
 from decimal import Decimal
 
 from sqlalchemy import select
@@ -16,7 +16,9 @@ from radar.models import Acompanhamento, Alerta, Cargo, Coleta, Edital, Filtro, 
 from radar.pipeline.detector import detectar
 from radar.pipeline.extractor import EditalExtraido, ErroExtracao, Extrator, parse_data
 from radar.pipeline.matcher import CargoInfo, EditalInfo, FiltroInfo, casar
+from radar.relogio import agora
 from radar.texto import normalizar
+from radar.usuarios import pode_receber_alertas
 
 log = logging.getLogger(__name__)
 
@@ -28,10 +30,6 @@ TIPOS_LIGADOS_A_OUTRO_EDITAL = {
     "convocacao",
     "homologacao",
 }
-
-
-def agora() -> datetime:
-    return datetime.now(UTC)
 
 
 # ---------------------------------------------------------------------------
@@ -261,7 +259,7 @@ def gerar_alertas(s: Session, edital: Edital) -> int:
         if edital.inscricao_fim and edital.inscricao_fim < hoje:
             return 0  # inscrições já encerradas (ex.: reprocessamento de dias antigos)
         info = edital_para_info(edital)
-        filtros = s.scalars(select(Filtro).join(Usuario).where(Filtro.ativo, Usuario.ativo))
+        filtros = s.scalars(select(Filtro).join(Usuario).where(Filtro.ativo, pode_receber_alertas()))
         for filtro in filtros:
             if filtro.usuario_id not in usuarios and casar(info, filtro_para_info(filtro)):
                 usuarios.add(filtro.usuario_id)
@@ -271,7 +269,7 @@ def gerar_alertas(s: Session, edital: Edital) -> int:
             s.scalars(
                 select(Acompanhamento.usuario_id)
                 .join(Usuario, Usuario.id == Acompanhamento.usuario_id)
-                .where(Acompanhamento.edital_id == edital.edital_pai_id, Usuario.ativo)
+                .where(Acompanhamento.edital_id == edital.edital_pai_id, pode_receber_alertas())
             )
         )
         motivo = "retificacao"
