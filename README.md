@@ -105,7 +105,7 @@ jurídico antes do lançamento público.
 
 ## Desenvolvimento
 
-- **Qualidade:** `ruff` (lint e formatação) e `pytest` com cobertura mínima de 84%. Tudo roda no CI
+- **Qualidade:** `ruff` (lint e formatação) e `pytest` com cobertura mínima de 88%. Tudo roda no CI
   (GitHub Actions) a cada push e PR, com Postgres de verdade para os testes de integração.
 - **Hooks locais:** `pip install pre-commit && pre-commit install`.
 - **Commits:** [Conventional Commits](https://www.conventionalcommits.org/pt-br/)
@@ -138,8 +138,30 @@ o teste `test_models_sincronizados_com_as_migrations` quebra se models e banco d
 `GET /metricas` devolve usuários ativos, publicações lidas, editais processados, alertas enviados
 e a latência p50/p95 entre a coleta e o alerta. Tudo sai das tabelas, sem instrumentação extra.
 
+## Operação e alarmes
+
+O worker se autodiagnostica a cada ciclo e avisa no Telegram do admin (`ADMIN_CHAT_ID`)
+**quando um problema abre e quando resolve**, nunca repetidamente.
+
+| Alarme | Severidade | Quando dispara |
+|---|---|---|
+| `worker_parado` | crítico | Nenhum ciclo há mais de 3× o intervalo |
+| `coleta_falhando:<fonte>` | crítico | 3 coletas seguidas com erro (site fora, login recusado...) |
+| `coleta_zerada:<fonte>` | aviso | Dia útil, após as 10h, sem nenhuma publicação candidata (feriado ou site mudou) |
+| `fila_parada` | crítico | Publicações esperando extração há mais de 1h (API da IA fora, chave inválida) |
+| `extracao_falhando` | aviso | 5+ publicações desistiram da extração em 24h |
+| `envio_parado` | crítico | Alertas esperando envio há mais de 30 min |
+| `etapa_falhou:<etapa>` | crítico | Uma etapa do ciclo lançou exceção (as demais continuam rodando) |
+
+- `GET /saude` responde **503** com problema crítico. Aponte um monitor externo gratuito
+  (UptimeRobot, Healthchecks.io) para ele: é o que avisa se o próprio worker morrer.
+- `docker compose run --rm worker python -m radar.worker saude` mostra o diagnóstico no terminal.
+- `LOG_FORMAT=json` gera uma linha JSON por evento (com tokens gastos na IA por extração),
+  pronta para CloudWatch, Loki ou Datadog.
+
 ## Próximos passos
 
+- [x] Migrations (Alembic), LGPD e alarmes operacionais
 - [ ] Rodar alguns dias com dados reais e revisar à mão ~50 extrações (qualidade da IA)
 - [ ] Site Next.js com uma página por edital (SEO) consumindo a API
 - [ ] Bancas: Cebraspe, FGV, FCC, Cesgranrio
