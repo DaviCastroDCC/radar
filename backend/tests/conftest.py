@@ -11,11 +11,13 @@ from sqlalchemy import Engine, create_engine, text
 
 from radar import db
 from radar.config import get_settings
+from radar.models import Base
 
 BACKEND = Path(__file__).resolve().parent.parent
 URL_BASE = os.environ.get("DATABASE_URL", "postgresql+psycopg://radar:radar@localhost:5432/radar")
 SERVIDOR = URL_BASE.rsplit("/", 1)[0]
-TABELAS = "alertas, acompanhamentos, filtros, usuarios, cargos, editais, publicacoes, coletas"
+# Derivado dos models: tabela nova entra na limpeza sem ninguém lembrar de atualizar.
+TABELAS = ", ".join(Base.metadata.tables)
 
 
 def _limpar_caches() -> None:
