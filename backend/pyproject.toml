@@ -48,7 +48,7 @@ ignore = [
 source = ["radar"]
 
 [tool.coverage.report]
-fail_under = 74
+fail_under = 84
 show_missing = true
 skip_empty = true
 

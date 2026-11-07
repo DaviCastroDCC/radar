@@ -82,13 +82,30 @@ curl "localhost:8000/editais?q=analista&uf=DF&abertos=true"
 /filtros
 /remover 3
 /parar
+/privacidade
+/meusdados
+/apagar
 ```
 
 Cada alerta vem com o botão **Acompanhar retificações**.
 
+## Privacidade (LGPD)
+
+| Requisito | Como o sistema atende |
+|---|---|
+| Consentimento (art. 7º, I) | Aceite explícito no `/start`, com data e versão gravadas; sem aceite, nada de filtros nem alertas |
+| Nova versão da política | Subir `TERMOS_VERSAO` em [radar/usuarios.py](backend/radar/usuarios.py) pede novo aceite a todos |
+| Acesso e portabilidade (art. 18) | `/meusdados` envia um JSON com tudo o que guardamos |
+| Eliminação (art. 18) | `/apagar` remove o usuário; filtros, alertas e acompanhamentos saem em cascata |
+| Minimização (art. 6º, III) | Só o `chat_id`; nome e telefone não são guardados |
+| Retenção | Inativos (bloqueio ou `/parar`) são apagados após 180 dias pelo worker |
+
+Política completa: [docs/PRIVACIDADE.md](docs/PRIVACIDADE.md). Revise-a com um profissional
+jurídico antes do lançamento público.
+
 ## Desenvolvimento
 
-- **Qualidade:** `ruff` (lint e formatação) e `pytest` com cobertura mínima de 74%. Tudo roda no CI
+- **Qualidade:** `ruff` (lint e formatação) e `pytest` com cobertura mínima de 84%. Tudo roda no CI
   (GitHub Actions) a cada push e PR, com Postgres de verdade para os testes de integração.
 - **Hooks locais:** `pip install pre-commit && pre-commit install`.
 - **Commits:** [Conventional Commits](https://www.conventionalcommits.org/pt-br/)
