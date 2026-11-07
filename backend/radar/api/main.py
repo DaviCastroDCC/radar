@@ -6,13 +6,15 @@ Rodar: uvicorn radar.api.main:app --host 0.0.0.0 --port 8000
 from datetime import date
 from decimal import Decimal
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Response
 from pydantic import BaseModel
 from sqlalchemy import select, text
 from sqlalchemy.orm import selectinload
 
+from radar.config import get_settings
 from radar.db import session_scope
 from radar.models import Edital, Publicacao
+from radar.saude import problemas_atuais
 
 app = FastAPI(title="Radar Concurso", version="0.1.0")
 
@@ -63,9 +65,30 @@ def _resumo(e: Edital) -> dict:
 
 @app.get("/health")
 def health() -> dict[str, str]:
+    """Liveness: a API está de pé e alcança o banco."""
     with session_scope() as s:
         s.execute(text("SELECT 1"))
     return {"status": "ok"}
+
+
+@app.get("/saude")
+def saude(response: Response) -> dict:
+    """Saúde do sistema inteiro, para monitor externo (UptimeRobot, Healthchecks...).
+
+    Responde 503 se houver problema crítico: cobre o caso em que o próprio worker morreu
+    e por isso não consegue disparar o alarme sozinho.
+    """
+    with session_scope() as s:
+        problemas = problemas_atuais(s, get_settings())
+    critico = any(p.severidade == "critico" for p in problemas)
+    if critico:
+        response.status_code = 503
+    return {
+        "status": "critico" if critico else ("degradado" if problemas else "ok"),
+        "problemas": [
+            {"chave": p.chave, "severidade": p.severidade, "mensagem": p.mensagem} for p in problemas
+        ],
+    }
 
 
 @app.get("/editais", response_model=list[EditalResumo])

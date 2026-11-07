@@ -146,6 +146,17 @@ class Alerta(Base):
     edital: Mapped[Edital] = relationship()
 
 
+class Alarme(Base):
+    __tablename__ = "alarmes"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    chave: Mapped[str]
+    severidade: Mapped[str]
+    mensagem: Mapped[str]
+    aberto_em: Mapped[datetime] = _agora()
+    resolvido_em: Mapped[datetime | None]
+
+
 class Coleta(Base):
     __tablename__ = "coletas"
 
