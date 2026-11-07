@@ -1,0 +1,72 @@
+@import "tailwindcss";
+
+/*
+ * Tokens de cor. Azul institucional transmite confiança (dado oficial); verde = inscrições
+ * abertas; âmbar = prazo acabando; vermelho = encerrado/urgente. Modo escuro automático.
+ */
+:root {
+  --fundo: #f7f8fb;
+  --superficie: #ffffff;
+  --superficie-2: #eef1f7;
+  --texto: #111827;
+  --texto-suave: #4b5563;
+  --borda: #e3e7ef;
+  --marca: #1d3fb8;
+  --marca-forte: #142e8a;
+  --marca-suave: #e8edfc;
+  --aberto: #0f7a4b;
+  --aberto-suave: #e3f5ec;
+  --alerta: #a35a00;
+  --alerta-suave: #fdf1dc;
+  --urgente: #b42318;
+  --urgente-suave: #fde8e7;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fundo: #0b1020;
+    --superficie: #121a2f;
+    --superficie-2: #18223b;
+    --texto: #e8ecf6;
+    --texto-suave: #a3adc2;
+    --borda: #26314d;
+    --marca: #7c9bff;
+    --marca-forte: #a9bcff;
+    --marca-suave: #1a2650;
+    --aberto: #4ade9b;
+    --aberto-suave: #10301f;
+    --alerta: #f6b04d;
+    --alerta-suave: #3a2a10;
+    --urgente: #ff8a80;
+    --urgente-suave: #3d1614;
+  }
+}
+
+@theme inline {
+  --color-fundo: var(--fundo);
+  --color-superficie: var(--superficie);
+  --color-superficie-2: var(--superficie-2);
+  --color-texto: var(--texto);
+  --color-texto-suave: var(--texto-suave);
+  --color-borda: var(--borda);
+  --color-marca: var(--marca);
+  --color-marca-forte: var(--marca-forte);
+  --color-marca-suave: var(--marca-suave);
+  --color-aberto: var(--aberto);
+  --color-aberto-suave: var(--aberto-suave);
+  --color-alerta: var(--alerta);
+  --color-alerta-suave: var(--alerta-suave);
+  --color-urgente: var(--urgente);
+  --color-urgente-suave: var(--urgente-suave);
+  --font-sans: var(--font-inter);
+}
+
+body {
+  background: var(--fundo);
+  color: var(--texto);
+}
+
+:focus-visible {
+  outline: 2px solid var(--marca);
+  outline-offset: 2px;
+}
