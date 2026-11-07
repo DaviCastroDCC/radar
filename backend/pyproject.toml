@@ -1,0 +1,56 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "radar-concurso"
+version = "0.1.0"
+description = "Lê diários oficiais, entende editais de concurso e avisa cada concurseiro do que importa para ele."
+requires-python = ">=3.12"
+dependencies = [
+    "anthropic>=2.6,<3",
+    "beautifulsoup4>=4.12",
+    "fastapi>=0.115",
+    "httpx>=0.27",
+    "lxml>=5.2",
+    "psycopg[binary]>=3.2",
+    "pydantic>=2.8",
+    "pydantic-settings>=2.4",
+    "python-telegram-bot>=21.6",
+    "sqlalchemy>=2.0.30",
+    "tzdata>=2024.1",
+    "uvicorn[standard]>=0.30",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.2", "pytest-cov>=5.0", "ruff>=0.6"]
+
+[tool.setuptools.packages.find]
+include = ["radar*"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "UP", "SIM", "C4", "RUF", "PT", "S"]
+ignore = [
+    "E501",                        # o comprimento é responsabilidade do `ruff format` (prompts longos são intencionais)
+    "RUF001", "RUF002", "RUF003",  # textos em português usam "–", "º" etc. de propósito
+    "S311",                        # random não criptográfico (não usado para segurança)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "S105", "S106"]
+
+[tool.coverage.run]
+source = ["radar"]
+
+[tool.coverage.report]
+fail_under = 74
+show_missing = true
+skip_empty = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
