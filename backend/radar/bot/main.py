@@ -19,6 +19,7 @@ from radar import usuarios
 from radar.bot import textos
 from radar.bot.comandos import AJUDA_FILTRO, NovoFiltro, parse_filtro
 from radar.config import get_settings
+from radar.logs import configurar_logs
 
 log = logging.getLogger("radar.bot")
 
@@ -238,9 +239,9 @@ def criar_app(token: str) -> Application:
 
 
 def main() -> None:
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
-    logging.getLogger("httpx").setLevel(logging.WARNING)
-    token = get_settings().telegram_bot_token
+    settings = get_settings()
+    configurar_logs(settings.log_format, settings.log_level)
+    token = settings.telegram_bot_token
     if not token:
         raise SystemExit("Defina TELEGRAM_BOT_TOKEN (crie o bot com o @BotFather).")
     log.info("bot iniciado")

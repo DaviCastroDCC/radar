@@ -129,9 +129,11 @@ class Extrator:
             raise ErroExtracao("resposta sem JSON válido")
 
         log.info(
-            "extração ok (%s): entrada=%s saída=%s tokens",
-            self.modelo,
-            resposta.usage.input_tokens,
-            resposta.usage.output_tokens,
+            "extração concluída",
+            extra={
+                "modelo": self.modelo,
+                "tokens_entrada": resposta.usage.input_tokens,
+                "tokens_saida": resposta.usage.output_tokens,
+            },
         )
         return resposta.parsed_output

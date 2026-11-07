@@ -26,6 +26,14 @@ class Settings(BaseSettings):
 
     max_filtros_free: int = 3
 
+    # Observabilidade
+    log_format: str = "texto"  # "json" em produção
+    log_level: str = "INFO"
+    # Chat do Telegram que recebe os alarmes operacionais (descubra com @userinfobot).
+    admin_chat_id: int | None = None
+    # Depois desta hora (Brasília), dia útil sem nenhuma publicação lida de uma fonte é alarme.
+    alarme_hora_limite_coleta: int = 10
+
     # LGPD: onde a política completa está publicada e como falar com o controlador.
     url_politica_privacidade: str = "https://github.com/DaviCastroDCC/radar/blob/main/docs/PRIVACIDADE.md"
     contato_privacidade: str | None = None

@@ -60,10 +60,10 @@ def coletar_fonte(coletor: Coletor, dia: date) -> tuple[int, int]:
             conhecidos.add(item.id_externo)
     except ErroColeta as e:
         erro = str(e)
-        log.error("coleta %s %s: %s", coletor.fonte, dia, e)
+        log.error("coleta recusada: %s", e, extra={"fonte": coletor.fonte, "dia": dia})
     except Exception as e:  # rede, HTML inesperado etc. - não derruba o worker
         erro = f"{type(e).__name__}: {e}"
-        log.exception("coleta %s %s falhou", coletor.fonte, dia)
+        log.exception("coleta falhou", extra={"fonte": coletor.fonte, "dia": dia})
 
     with session_scope() as s:
         coleta = s.get(Coleta, coleta_id)
@@ -71,7 +71,10 @@ def coletar_fonte(coletor: Coletor, dia: date) -> tuple[int, int]:
         coleta.itens_lidos = lidos
         coleta.itens_novos = novos
         coleta.erro = erro
-    log.info("coleta %s %s: %s candidatas, %s novas", coletor.fonte, dia, lidos, novos)
+    log.info(
+        "coleta concluída",
+        extra={"fonte": coletor.fonte, "dia": dia, "candidatas": lidos, "novas": novos, "erro": erro},
+    )
     return lidos, novos
 
 
@@ -139,7 +142,7 @@ def processar_publicacao(s: Session, pub: Publicacao, extrator: Extrator, max_te
         pub.tentativas += 1
         pub.erro = str(e)
         pub.status = "erro" if pub.tentativas >= max_tentativas else "pendente"
-        log.warning("publicação %s: %s (tentativa %s)", pub.id, e, pub.tentativas)
+        log.warning("extração falhou: %s", e, extra={"publicacao_id": pub.id, "tentativa": pub.tentativas})
         return
 
     if not extraido.e_concurso or extraido.tipo == "outro":
@@ -149,7 +152,11 @@ def processar_publicacao(s: Session, pub: Publicacao, extrator: Extrator, max_te
     edital = salvar_edital(s, pub, extraido, extrator.modelo)
     _finalizar(pub, "processada")
     criados = gerar_alertas(s, edital)
-    log.info("edital %s (%s) %s: %s alertas", edital.id, edital.tipo, edital.titulo, criados)
+    log.info(
+        "edital processado: %s",
+        edital.titulo,
+        extra={"edital_id": edital.id, "tipo": edital.tipo, "fonte": pub.fonte, "alertas": criados},
+    )
 
 
 def _finalizar(pub: Publicacao, status: str) -> None:
