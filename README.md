@@ -38,6 +38,32 @@ quando sai retificação de um edital que a pessoa acompanha.
 **Stack:** Python 3.12, FastAPI, SQLAlchemy 2, PostgreSQL 17 (busca textual em português sem
 acento + pgvector reservado), python-telegram-bot, SDK da Anthropic, Docker.
 
+## Fontes
+
+Meta atual: **DOU + as 10 maiores bancas**. Só coletamos o que o `robots.txt` permite e nunca
+contornamos bloqueio: concursos de bancas fechadas chegam pelos diários oficiais, onde o órgão
+contratante é obrigado a publicar.
+
+| Fonte | Status | Observação |
+|---|---|---|
+| DODF | ✅ coletando | JSON interno do site, todo ciclo |
+| DOU (INLABS) | ✅ pronto | Precisa de `INLABS_EMAIL`/`INLABS_PASSWORD` (cadastro gratuito) |
+| Cebraspe | ✅ coletando | API JSON pública + PDFs; a cada 30 min |
+| FGV, Cesgranrio, Instituto AOCP, Consulplan | 🔜 próximas | Sites liberados no `robots.txt` |
+| Quadrix, Idecan | 🔜 próximas | Liberados para robôs em geral (bloqueiam só treino de IA, que não fazemos) |
+| FCC | ⛔ não coletar | `robots.txt` proíbe `/concursos/` e PDFs; cobertura via DOU/diários |
+| Vunesp, IBFC | ⛔ não coletar | Bloqueiam robôs (403); cobertura via DOU/diários |
+
+Detalhes de cada fonte de banca:
+
+- Só entram documentos que mudam a vida do candidato (abertura, retificação, prorrogação,
+  suspensão). Resultados e listas de candidatos ficam de fora: são enormes e cheios de dados pessoais.
+- O mesmo concurso vindo de duas fontes (banca + DOU) gera **um** alerta
+  ([radar/pipeline/dedup.py](backend/radar/pipeline/dedup.py)). Na dúvida, não junta: alerta
+  duplicado é melhor que concurso perdido.
+- Nova banca = uma classe com `listar_documentos()` em
+  [radar/collectors/bancas/](backend/radar/collectors/bancas/) + registro em `radar/collectors/__init__.py`.
+
 ## Rodando
 
 Pré-requisito: Docker Desktop. Para produção, veja [deploy/README.md](deploy/README.md).
