@@ -12,6 +12,7 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from radar.collectors import FONTES_DIARIOS
 from radar.config import Settings
 from radar.models import Alarme, Alerta, Coleta, Publicacao
 from radar.relogio import agora
@@ -81,6 +82,8 @@ def _coleta(s: Session, settings: Settings, fonte: str, ref: datetime) -> list[P
             )
         )
 
+    if fonte not in FONTES_DIARIOS:
+        return problemas  # banca sem documento novo no dia é normal
     local = ref.astimezone(FUSO)
     dia_util = local.weekday() < 5
     if dia_util and local.hour >= settings.alarme_hora_limite_coleta:

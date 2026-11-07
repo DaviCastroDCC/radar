@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     inlabs_password: str | None = None
     dou_secoes: str = "DO1,DO2,DO3,DO1E,DO2E,DO3E"
 
-    fontes: str = "dodf,dou"
+    fontes: str = "dodf,dou,cebraspe"
     intervalo_coleta_min: int = 10
     pausa_entre_requisicoes_s: float = 0.5
     max_tentativas: int = 3

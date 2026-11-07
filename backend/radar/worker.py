@@ -17,13 +17,13 @@ from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
 from radar.alarmes import notificador_telegram, sincronizar
-from radar.collectors import criar_coletores
+from radar.collectors import criar_coletores, fontes_disponiveis
 from radar.config import get_settings
 from radar.db import session_scope
 from radar.logs import configurar_logs
 from radar.notify.telegram import Telegram, enviar_pendentes
 from radar.pipeline.extractor import Extrator
-from radar.pipeline.processor import coletar_fonte, processar_pendentes
+from radar.pipeline.processor import coletada_recentemente, coletar_fonte, processar_pendentes
 from radar.saude import Problema, diagnosticar, problemas_atuais
 from radar.usuarios import purgar_inativos
 
@@ -36,9 +36,14 @@ def hoje() -> date:
 
 
 def coletar(fonte: str | None = None, dia: date | None = None) -> None:
+    """Sem argumentos (ciclo normal), respeita o intervalo próprio de cada fonte (bancas: 30 min)."""
     settings = get_settings()
+    manual = fonte is not None or dia is not None
     for coletor in criar_coletores(settings):
         if fonte and coletor.fonte != fonte:
+            continue
+        intervalo = getattr(coletor, "intervalo_min", None)
+        if not manual and intervalo and coletada_recentemente(coletor.fonte, intervalo):
             continue
         coletar_fonte(coletor, dia or hoje())
 
@@ -137,7 +142,7 @@ def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="radar.worker")
     sub = parser.add_subparsers(dest="comando", required=True)
     p_coletar = sub.add_parser("coletar")
-    p_coletar.add_argument("--fonte", choices=["dodf", "dou"])
+    p_coletar.add_argument("--fonte", choices=fontes_disponiveis())
     p_coletar.add_argument("--data", type=date.fromisoformat, help="AAAA-MM-DD (padrão: hoje)")
     for nome in ("processar", "notificar", "ciclo", "loop", "saude"):
         sub.add_parser(nome)
