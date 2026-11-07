@@ -40,7 +40,7 @@ acento + pgvector reservado), python-telegram-bot, SDK da Anthropic, Docker.
 
 ## Rodando
 
-Pré-requisito: Docker Desktop.
+Pré-requisito: Docker Desktop. Para produção, veja [deploy/README.md](deploy/README.md).
 
 ```bash
 cp .env.example .env       # preencha as chaves (veja abaixo)
@@ -168,4 +168,5 @@ O worker se autodiagnostica a cada ciclo e avisa no Telegram do admin (`ADMIN_CH
 - [ ] Diários estaduais e municipais (via Querido Diário)
 - [ ] Plano Premium (Pix/cartão), alerta instantâneo e WhatsApp
 - [ ] Busca semântica de cargos com pgvector
-- [ ] Deploy na AWS (ECS Fargate + RDS; trocar a fila do Postgres por SQS quando o volume pedir)
+- [x] Deploy em VM única com HTTPS, backup e restauração testada ([deploy/README.md](deploy/README.md))
+- [ ] Escalar para AWS (ECS Fargate + RDS; fila em SQS) quando a carga pedir
