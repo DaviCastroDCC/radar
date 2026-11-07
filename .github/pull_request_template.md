@@ -10,5 +10,5 @@
 
 - [ ] `ruff format --check` e `ruff check` sem erros
 - [ ] Testes novos ou ajustados cobrindo a mudança
-- [ ] Mudança de schema refletida em `db/schema.sql` e nos models
+- [ ] Mudança de schema com migration nova (com `downgrade`) e models atualizados
 - [ ] Sem segredos ou dados pessoais em código, fixtures ou logs

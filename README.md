@@ -27,7 +27,7 @@ quando sai retificação de um edital que a pessoa acompanha.
 
 | Peça | Onde |
 |---|---|
-| Schema do banco (fonte da verdade) | [db/schema.sql](db/schema.sql) |
+| Schema do banco (migrations Alembic) | [backend/migrations/](backend/migrations/) |
 | Coletores | [backend/radar/collectors/](backend/radar/collectors/) |
 | Detector, extrator, matcher, fila | [backend/radar/pipeline/](backend/radar/pipeline/) |
 | Envio dos alertas | [backend/radar/notify/](backend/radar/notify/) |
@@ -98,6 +98,23 @@ Cada alerta vem com o botão **Acompanhar retificações**.
 ```bash
 docker compose run --rm api sh -c "ruff format . && ruff check . && pytest --cov"
 ```
+
+### Migrations (Alembic)
+
+O serviço `migrate` aplica as migrations a cada `docker compose up`, antes dos demais.
+Para mudar o schema:
+
+```bash
+# 1. altere radar/models.py
+# 2. gere o rascunho e REVISE o arquivo criado em backend/migrations/versions/
+docker compose run --rm migrate alembic revision --autogenerate -m "descricao curta"
+# 3. aplique e teste
+docker compose run --rm migrate alembic upgrade head
+docker compose run --rm api pytest tests/test_migrations.py
+```
+
+Regras: toda migration tem `downgrade`; nunca edite uma migration já mergeada na `main`;
+o teste `test_models_sincronizados_com_as_migrations` quebra se models e banco divergirem.
 
 ## Métricas (para o banner)
 
