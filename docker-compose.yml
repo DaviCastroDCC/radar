@@ -1,0 +1,52 @@
+name: radar-concurso
+
+x-backend: &backend
+  build: ./backend
+  env_file:
+    - path: .env
+      required: false
+  environment:
+    DATABASE_URL: postgresql+psycopg://radar:radar@db:5432/radar
+  volumes:
+    - ./backend:/app        # código ao vivo em desenvolvimento
+    - ./db:/db:ro           # schema usado pelos testes de integração
+  depends_on:
+    db:
+      condition: service_healthy
+
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: radar
+      POSTGRES_PASSWORD: radar
+      POSTGRES_DB: radar
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U radar -d radar"]
+      interval: 5s
+      retries: 10
+
+  worker:
+    <<: *backend
+    command: python -m radar.worker loop
+    restart: unless-stopped
+
+  bot:
+    <<: *backend
+    command: python -m radar.bot.main
+    restart: on-failure
+
+  api:
+    <<: *backend
+    command: uvicorn radar.api.main:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+volumes:
+  pgdata:
